@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 
@@ -9,65 +10,71 @@ import (
 )
 
 var dbUrl = os.Getenv("DATABASE_URL")
-var dbDriver = "postgres"
+var dbDriver = os.Getenv("DATABASE_DRIVER")
 
 func main() {
-	r := gin.Default()
+	dbHandle, err := GetDbHandle(dbDriver, dbUrl)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
-	r.GET("/booking", func(c *gin.Context) {
-		dbHandle, err := GetDbHandle(dbDriver, dbUrl)
-		if err != nil {
-			fmt.Println(err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
-			return
-		}
+	err = dbHandle.AutoMigrate(&Booking{})
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
+	route := gin.Default()
+
+	route.GET("/booking", func(c *gin.Context) {
 		bookings := []Booking{}
-
-		err = RetrieveBookings(dbHandle, bookings)
-		if err != nil {
-			fmt.Println(err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		res := dbHandle.Find(&bookings)
+		if res.Error != nil {
+			log.Printf("Failed to retrieve bookings: %v", res.Error)
+			c.JSON(http.StatusBadRequest, gin.H{"error": res.Error.Error()})
 			return
 		}
 
 		c.JSON(http.StatusOK, bookings)
 	})
 
-	r.POST("/booking", func(c *gin.Context) {
-		var booking_request BookingDetails
-		if err := c.ShouldBindJSON(&booking_request); err != nil {
-			fmt.Println(err)
+	route.POST("/booking", func(c *gin.Context) {
+		var bookingRequest BookingCreateRequest
+		if err := c.ShouldBindJSON(&bookingRequest); err != nil {
+			log.Printf("Failed to parse incoming booking request: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		booking_id, err := CreateBooking(&booking_request)
-		if err != nil {
-			fmt.Println(err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		booking := FromBookingRequest(&bookingRequest)
+		res := dbHandle.Create(booking)
+		if res.Error != nil {
+			log.Printf("Failed to create booking %v", res.Error)
+			c.JSON(http.StatusBadRequest, gin.H{"error": res.Error.Error()})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"booking_id": booking_id})
+		c.JSON(http.StatusOK, booking)
 	})
 
-	r.DELETE("/booking", func(c *gin.Context) {
-		var booking_request DeleteBookingRequest
-		if err := c.ShouldBindJSON(&booking_request); err != nil {
-			fmt.Println(err)
+	route.DELETE("/booking", func(c *gin.Context) {
+		var bookingRequest BookingDeleteRequestById
+		if err := c.ShouldBindJSON(&bookingRequest); err != nil {
+			log.Printf("Failed to parse incoming booking request: %v", err)
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		if err := DeleteBooking(&booking_request); err != nil {
-			fmt.Println(err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		res := dbHandle.Delete(&bookingRequest)
+		if res.Error != nil {
+			log.Printf("Failed to delete booking: %v", res.Error)
+			c.JSON(http.StatusBadRequest, gin.H{"error": res.Error.Error()})
 			return
 		}
 
-		c.JSON(http.StatusOK, gin.H{"deleted": "deleted"})
+		c.JSON(http.StatusOK, bookingRequest)
 	})
 
-	r.Run() // 0.0.0.0:8080
+	route.Run() // 0.0.0.0:8080
 }
