@@ -1,4 +1,4 @@
-module github.com/ivasylenko/space_trouble
+module github.com/ivasylenko/space_trouble/app
 
 go 1.17
 

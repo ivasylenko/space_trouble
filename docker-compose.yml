@@ -1,7 +1,7 @@
 version: '3' 
 services: 
   space_trouble: 
-    build: ./
+    build: app
     ports: 
       - '8080:8080'
     environment:

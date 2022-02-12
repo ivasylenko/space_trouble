@@ -43,15 +43,6 @@ type DeleteBookingRequest struct {
 	Booking
 }
 
-func GetBookings() ([]Booking, error) {
-	bookings := []Booking{}
-	err := RetrieveBookings(bookings)
-	if err != nil {
-		return nil, err
-	}
-	return bookings, nil
-}
-
 func CreateBooking(booking_request *BookingDetails) (string, error) {
 	fmt.Printf("%+v\n", booking_request)
 	return "booking-id", nil
