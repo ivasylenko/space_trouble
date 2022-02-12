@@ -10,12 +10,16 @@ func main() {
 	r := gin.Default()
 
 	r.GET("/booking", func(c *gin.Context) {
-		bookings := GetBookings()
+		bookings, err := GetBookings()
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusOK, bookings)
 	})
 
 	r.POST("/booking", func(c *gin.Context) {
-		var booking_request CreateBookingRequest
+		var booking_request BookingDetails
 		if err := c.ShouldBindJSON(&booking_request); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return

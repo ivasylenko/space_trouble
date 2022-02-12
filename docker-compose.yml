@@ -1,0 +1,23 @@
+version: '3' 
+services: 
+  space_trouble: 
+    build: ./
+    ports: 
+      - '8080:8080'
+    environment:
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD}@db/postgres?sslmode=disable
+    networks:
+      - service-network
+    depends_on:
+      - db
+  db:
+    image: postgres:12-alpine
+    restart: always
+    environment:
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    networks:
+      - service-network
+    ports:
+      - 5432:5432
+networks:
+  service-network: {}

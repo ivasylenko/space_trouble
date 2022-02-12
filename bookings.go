@@ -24,7 +24,7 @@ const (
 	Ganymede DestinationName = "Ganymede"
 )
 
-type Booking struct {
+type BookingDetails struct {
 	FirstName     string          `json:"first_name"`
 	LastName      string          `json:"last_name"`
 	Gender        GenderName      `json:"gender"`
@@ -32,23 +32,27 @@ type Booking struct {
 	LaunchpadID   string          `json:"launchpad_id"`
 	DestinationID DestinationName `json:"destination_id"`
 	LaunchDate    time.Time       `json:"launch_date"`
-	BookingID     string          `json:"booking_id"`
 }
 
-type CreateBookingRequest struct {
-	Booking
+type Booking struct {
+	BookingDetails
+	BookingID string `json:"booking_id"`
 }
 
 type DeleteBookingRequest struct {
 	Booking
 }
 
-func GetBookings() []Booking {
-	bookings := []Booking{{FirstName: "Some"}, {FirstName: "Another"}}
-	return bookings
+func GetBookings() ([]Booking, error) {
+	bookings := []Booking{}
+	err := RetrieveBookings(bookings)
+	if err != nil {
+		return nil, err
+	}
+	return bookings, nil
 }
 
-func CreateBooking(booking_request *CreateBookingRequest) (string, error) {
+func CreateBooking(booking_request *BookingDetails) (string, error) {
 	fmt.Printf("%+v\n", booking_request)
 	return "booking-id", nil
 }
