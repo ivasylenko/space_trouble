@@ -49,8 +49,6 @@ func assignRoutes() *gin.Engine {
 	})
 
 	router.POST("/booking", func(c *gin.Context) {
-		log.Printf("Create booking")
-
 		var bookingRequest BookingCreateRequest
 		if err := c.ShouldBindJSON(&bookingRequest); err != nil {
 			log.Printf("Failed to parse incoming booking request: %v", err)
@@ -61,7 +59,7 @@ func assignRoutes() *gin.Engine {
 		booking, err := CreateBooking(&bookingRequest)
 		if err != nil {
 			log.Printf("Failed to validate booking: %v", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": err})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
@@ -77,12 +75,12 @@ func assignRoutes() *gin.Engine {
 
 	router.DELETE("/booking/:id", func(c *gin.Context) {
 		bookingId := c.Param("id")
-		log.Printf("Delete booking: %v", bookingId)
+		log.Printf("Removing booking: %v", bookingId)
 
 		u, err := strconv.ParseUint(bookingId, 10, 64)
 		if err != nil {
 			log.Printf("Failed to parse booking id: %v", err)
-			c.JSON(http.StatusBadRequest, gin.H{"error": err})
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 		booking := Booking{ID: u}
@@ -94,7 +92,12 @@ func assignRoutes() *gin.Engine {
 			return
 		}
 
-		log.Printf("Deleted bookings: %v", res.RowsAffected)
+		if res.RowsAffected == 0 {
+			c.JSON(http.StatusBadRequest,
+				gin.H{"error": fmt.Sprintf("couldn't remove booking: %v", bookingId)})
+			return
+		}
+
 		c.JSON(http.StatusOK, gin.H{})
 	})
 

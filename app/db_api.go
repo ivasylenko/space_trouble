@@ -27,14 +27,3 @@ func GetDbHandle(dbDriver string, dbUrl string) (*gorm.DB, error) {
 
 	return dbHandle, nil
 }
-
-func FreeDbHandle() error {
-	if dbHandle != nil {
-		sqlDB, err := dbHandle.DB()
-		if err != nil {
-			return err
-		}
-		sqlDB.Close()
-	}
-	return nil
-}

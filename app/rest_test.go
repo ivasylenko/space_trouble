@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -10,81 +11,173 @@ import (
 	"time"
 )
 
-func TestPostBooking(t *testing.T) {
-	// booking := Booking{LastName: "LALALALA",
-	// 	FirstName: "BLABLABLA", Gender: "Blsb",
-	// 	Birthday: "1993-01-15", LaunchpadID: "launch-id",
-	// 	DestinationID: "destination-id", LaunchDate: "2022-11-21",
-	// }
-	booking_request := map[string]string{
-		"first_name":     "Baba",
-		"last_name":      "O'riley",
-		"gender":         "Male",
-		"birthday":       time.Now().Format("2006-01-02"),
-		"launchpad_id":   "5e9e4501f509094ba4566f84",
-		"destination_id": "Ganymede",
-		"launch_date":    "2022-02-20",
-	}
-
-	jsonBody, err := json.Marshal(&booking_request)
+func TestPostBookingBusy(t *testing.T) {
+	bookingUrl := "http://127.0.0.1:8080/booking"
+	err := runPostTest(bookingUrl,
+		&map[string]string{
+			"first_name":     "Pamela",
+			"last_name":      "Mars",
+			"gender":         "Male",
+			"birthday":       time.Now().Format("2006-01-02"),
+			"launchpad_id":   "5e9e4501f509094ba4566f84",
+			"destination_id": "Ganymede",
+			"launch_date":    "2022-02-20",
+		},
+		http.StatusBadRequest)
 	if err != nil {
-		t.Errorf("unexpected error while marshling: %v", err)
+		t.Error(err)
 	}
+}
 
-	requestBody := bytes.NewBuffer(jsonBody)
-
-	resp, err := http.Post("http://127.0.0.1:8080/booking", "application/json", requestBody)
+func TestPostBookingWrongDestination(t *testing.T) {
+	bookingUrl := "http://127.0.0.1:8080/booking"
+	err := runPostTest(bookingUrl,
+		&map[string]string{
+			"first_name":     "Pamela",
+			"last_name":      "Mars",
+			"gender":         "Male",
+			"birthday":       time.Now().Format("2006-01-02"),
+			"launchpad_id":   "5e9e4501f509094ba4566f84",
+			"destination_id": "Neptun",
+			"launch_date":    "2022-02-20",
+		},
+		http.StatusBadRequest)
 	if err != nil {
-		t.Errorf("unexpected error response: %v", err)
+		t.Error(err)
 	}
-	defer resp.Body.Close()
+}
 
-	responseBody, err := ioutil.ReadAll(resp.Body)
+func TestPostDestinationIsNotScheduledOnDay(t *testing.T) {
+	bookingUrl := "http://127.0.0.1:8080/booking"
+	err := runPostTest(bookingUrl,
+		&map[string]string{
+			"first_name":     "Pamela",
+			"last_name":      "Mars",
+			"gender":         "Male",
+			"birthday":       time.Now().Format("2006-01-02"),
+			"launchpad_id":   "5e9e4501f509094ba4566f84",
+			"destination_id": "Ganymede",
+			"launch_date":    "2022-02-21",
+		},
+		http.StatusBadRequest)
 	if err != nil {
-		t.Errorf("unexpected error readinf response: %v", err)
+		t.Error(err)
 	}
-	log.Printf("Response: %v", string(responseBody))
+}
+
+func TestPostSuccess(t *testing.T) {
+	bookingUrl := "http://127.0.0.1:8080/booking"
+	err := runPostTest(bookingUrl,
+		&map[string]string{
+			"first_name":     "Pamela",
+			"last_name":      "Mars",
+			"gender":         "Male",
+			"birthday":       time.Now().Format("2006-01-02"),
+			"launchpad_id":   "5e9e4501f509094ba4566f84",
+			"destination_id": "Mars",
+			"launch_date":    "2022-02-21",
+		},
+		http.StatusOK)
+	if err != nil {
+		t.Error(err)
+	}
 }
 
 func TestGetBookings(t *testing.T) {
-	resp, err := http.Get("http://127.0.0.1:8080/booking")
+	bookingUrl := "http://127.0.0.1:8080/booking"
+	err := runGetTest(bookingUrl, 2)
 	if err != nil {
-		t.Errorf("unexpected error response: %v", err)
+		t.Error(err)
+	}
+}
+
+func TestDeleteBooking(t *testing.T) {
+	bookingUrl := "http://127.0.0.1:8080/booking/11"
+	err := runDeleteTest(bookingUrl)
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func runDeleteTest(bookingUrl string) error {
+	client := &http.Client{}
+
+	req, err := http.NewRequest("DELETE", bookingUrl, nil)
+	if err != nil {
+		return fmt.Errorf("failed to construct request: %v", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("error sending delete request : %v", err)
 	}
 	defer resp.Body.Close()
 
 	responseBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		t.Errorf("unexpected error reading response: %v", err)
-	}
-	log.Printf("Response: %v", string(responseBody))
-}
-
-func TestDeleteBooking(t *testing.T) {
-
-	client := &http.Client{}
-
-	req, err := http.NewRequest("DELETE", "http://127.0.0.1:8080/booking/8", nil)
-	if err != nil {
-		t.Errorf("failed to construct request: %v", err)
-	}
-
-	// Fetch Request
-	resp, err := client.Do(req)
-	if err != nil {
-		t.Errorf("error sending delete request : %v", err)
-		return
-	}
-	defer resp.Body.Close()
-
-	// Read Response Body
-	respBody, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		t.Errorf("error reading response : %v", err)
-		return
+		return fmt.Errorf("error reading response : %v", err)
 	}
 
 	log.Printf("response Status : %v", resp.Status)
 	log.Printf("response Headers : %v", resp.Header)
-	log.Printf("response Body : %v", string(respBody))
+	log.Printf("response Body : %v", string(responseBody))
+	return nil
+}
+
+func runGetTest(bookingUrl string, expectedItems int) error {
+	resp, err := http.Get(bookingUrl)
+	if err != nil {
+		return fmt.Errorf("unexpected error response: %v", err)
+	}
+	defer resp.Body.Close()
+
+	responseBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("unexpected error reading response: %v", err)
+	}
+
+	log.Printf("response Status : %v", resp.Status)
+	log.Printf("response Headers : %v", resp.Header)
+	log.Printf("response Body : %v", string(responseBody))
+
+	var bookings []interface{}
+	err = json.Unmarshal(responseBody, &bookings)
+	if err != nil {
+		return fmt.Errorf("unexpected error while marshling: %v", err)
+	}
+
+	if len(bookings) != expectedItems {
+		return fmt.Errorf("expected: %v bookings, found: %v", expectedItems, len(bookings))
+	}
+	return nil
+}
+
+func runPostTest(bookingUrl string, request *map[string]string, expected_code int) error {
+	jsonBody, err := json.Marshal(request)
+	if err != nil {
+		return fmt.Errorf("unexpected error while marshling: %v", err)
+	}
+
+	requestBody := bytes.NewBuffer(jsonBody)
+
+	resp, err := http.Post(bookingUrl, "application/json", requestBody)
+	if err != nil {
+		return fmt.Errorf("unexpected error response: %v", err)
+	}
+	defer resp.Body.Close()
+
+	responseBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("unexpected error readinf response: %v", err)
+	}
+
+	log.Printf("response Status : %v", resp.Status)
+	log.Printf("response Headers : %v", resp.Header)
+	log.Printf("response Body : %v", string(responseBody))
+
+	if resp.StatusCode != expected_code {
+		return fmt.Errorf("wrong response: %v", resp.StatusCode)
+	}
+
+	return nil
 }

@@ -22,70 +22,65 @@ type ApiResponse struct {
 	Docs      []interface{} `json:"docs"`
 }
 
+func CheckLaunchpadAvailable(launchpadId string, launchDate time.Time) (bool, error) {
+	//Query if there is Launch on given `launchpadId` and date `launchDate`
+	//return if avaiable for launch
+
+	response := ApiResponse{}
+	query := ApiQuery{
+		Query: map[string]interface{}{
+			"launchpad": launchpadId,
+			"upcoming":  true,
+			"tbd":       false,
+			"date_utc": map[string]string{
+				"$gte": launchDate.Format(time.RFC3339),
+				"$lte": launchDate.Add(time.Hour * 24).Format(time.RFC3339),
+			},
+		},
+	}
+
+	err := SendApiQuery(LaunchesEndpointV5, &query, &response)
+	if err != nil {
+		return false, err
+	}
+
+	// Check if there are launches from given launchpad on the date
+	if response.TotalDocs > 0 {
+		log.Printf("launchpad: %v is not avaiable on: %v", launchpadId, launchDate)
+		return false, nil
+	}
+
+	return true, nil
+}
+
 func SendApiQuery(endpoint string, query *ApiQuery, response *ApiResponse) error {
 	jsonBody, err := json.Marshal(query)
 	if err != nil {
-		return fmt.Errorf("failed to format query request: %v, %v", query, err)
+		return fmt.Errorf("can't marshal query: %v", err)
 	}
 
 	requestBody := bytes.NewBuffer(jsonBody)
 
+	log.Printf("Send api query: %v", string(jsonBody))
+
 	resp, err := http.Post(endpoint, "application/json", requestBody)
 	if err != nil {
-		return fmt.Errorf("failed to send query: %v, %v", string(jsonBody), err)
+		return fmt.Errorf("can't send query: %v", err)
 	}
 	defer resp.Body.Close()
 
 	responseBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("failed to read api response: %v", err)
+		return fmt.Errorf("can't read api response: %v", err)
 	}
 
-	log.Printf("Received API response: %v", string(responseBody))
+	log.Printf("Received api response: %v", string(responseBody))
 
 	err = json.Unmarshal(responseBody, &response)
 	if err != nil {
-		return fmt.Errorf("failed to unmarshal api response: %v", string(responseBody))
+		log.Printf("Can't unmarshal API response: %v - %v", string(responseBody), err)
+		return fmt.Errorf("can't unmarshal api response: %v", err)
 	}
 
-	return nil
-}
-
-func AddDateFilter(query *ApiQuery, date time.Time) error {
-	if query.Query == nil {
-		query.Query = map[string]interface{}{}
-	}
-	if _, ok := query.Query["date_utc"]; ok {
-		return fmt.Errorf("failed to date filter: %v as it is already set", date)
-	}
-
-	date_to := date.Add(time.Hour * 24)
-
-	query.Query["date_utc"] = map[string]string{
-		"$gte": date.Format(time.RFC3339),
-		"$lte": date_to.Format(time.RFC3339),
-	}
-	return nil
-}
-
-func AddStringFilter(query *ApiQuery, key string, value string) error {
-	if query.Query == nil {
-		query.Query = map[string]interface{}{}
-	}
-	if _, ok := query.Query[key]; ok {
-		return fmt.Errorf("failed to add string filter {%v: %v}", key, value)
-	}
-	query.Query[key] = value
-	return nil
-}
-
-func AddBoolFilter(query *ApiQuery, key string, value bool) error {
-	if query.Query == nil {
-		query.Query = map[string]interface{}{}
-	}
-	if _, ok := query.Query[key]; ok {
-		return fmt.Errorf("failed to add bool filter {%v: %v}", key, value)
-	}
-	query.Query[key] = value
 	return nil
 }

@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
 )
 
@@ -35,6 +34,10 @@ var schedule = map[time.Weekday]DestinationName{
 	time.Friday:    Europa,
 	time.Saturday:  Titan,
 	time.Sunday:    Ganymede,
+}
+
+var validDestinations = map[DestinationName]bool{
+	Mars: true, Moon: true, Pluto: true, AsteroidBelt: true, Europa: true, Titan: true, Ganymede: true,
 }
 
 type Booking struct {
@@ -73,26 +76,28 @@ func (mt *DateTime) UnmarshalJSON(bs []byte) error {
 }
 
 func CreateBooking(bookingRequest *BookingCreateRequest) (*Booking, error) {
+	// Validate Booking request and create Booking
+
+	destinationID := bookingRequest.DestinationID
+	if _, ok := validDestinations[destinationID]; !ok {
+		return nil, fmt.Errorf("unknown destination: %v", destinationID)
+	}
+
 	launchDate := time.Time(bookingRequest.LaunchDate).UTC()
-	bookingWeekday := launchDate.Weekday()
-	if v, ok := schedule[bookingWeekday]; ok {
+	if v, ok := schedule[launchDate.Weekday()]; ok {
 		if v != bookingRequest.DestinationID {
-			return nil, fmt.Errorf("no flights to: %v on: %v", bookingRequest.DestinationID, bookingWeekday)
+			return nil, fmt.Errorf("no flights to: %v on: %v", destinationID, launchDate.Weekday())
 		}
 	}
 
-	destinationID := bookingRequest.DestinationID
 	launchpadID := bookingRequest.LaunchpadID
-
-	log.Printf("Check avaiability of launchpad: %v on date: %v", launchpadID, launchDate)
-
 	ok, err := CheckLaunchpadAvailable(launchpadID, launchDate)
 	if err != nil {
-		return nil, fmt.Errorf("failed to check if launchpad is avaiable: %v", err)
+		return nil, err
 	}
 
 	if !ok {
-		return nil, fmt.Errorf("date: %v is not avaiable", launchDate)
+		return nil, fmt.Errorf("date: %v is not avaiable for launchpad: %v", launchDate, launchpadID)
 	}
 
 	return &Booking{
