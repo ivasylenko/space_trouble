@@ -23,10 +23,14 @@ func TestQueryConstructor(t *testing.T) {
 		t.Error(err)
 	}
 
-	err = AddDateFilter(&query, "2022-02-20")
-	if err != nil {
-		t.Error(err)
-	}
+	// launchDate, err := time.Parse("2006-01-02", "2022-02-20")
+	// if err != nil {
+	// 	t.Error(err)
+	// }
+	// err = AddDateFilter(&query, launchDate)
+	// if err != nil {
+	// 	t.Error(err)
+	// }
 
 	err = SendApiQuery(LaunchesEndpointV5, &query, &response)
 	if err != nil {

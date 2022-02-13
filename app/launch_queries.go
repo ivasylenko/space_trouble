@@ -1,8 +1,11 @@
 package main
 
-import "fmt"
+import (
+	"log"
+	"time"
+)
 
-func CheckLaunchpadAvailable(launchpad_id string, launch_date string) (bool, error) {
+func CheckLaunchpadAvailable(launchpad_id string, launch_date time.Time) (bool, error) {
 	//Query if there is Launch on given `launchpad_id` and date `launch_date
 	//return if avaiable for launch
 	query := ApiQuery{}
@@ -34,7 +37,7 @@ func CheckLaunchpadAvailable(launchpad_id string, launch_date string) (bool, err
 	}
 
 	if response.TotalDocs > 0 {
-		fmt.Printf("Launchpad: %s is not avaiable on: %s", launchpad_id, launch_date)
+		log.Printf("Launchpad: %s is not avaiable on: %s", launchpad_id, launch_date)
 		return false, nil
 	}
 
